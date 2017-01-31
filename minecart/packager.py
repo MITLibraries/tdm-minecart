@@ -5,8 +5,6 @@ import zipfile
 
 import requests
 
-from minecart.config import config
-
 
 def docset(docset_id):
     r = requests.get(config.api + '/docsets/' + docset_id + '/catalog')
@@ -27,31 +25,6 @@ def create_archive(docs):
             r = requests.get(doc)
             zf.writestr(doc, r.content)
     return archive_name
-
-
-def upload(archive):
-    url = config.storage_url + '/upload' + config.bucket
-    size = os.path.getsize(archive)
-    filename = os.path.basename(archive)
-    headers = {
-        'X-Upload-Content-Type': 'application/zip',
-        'X-Upload-Content-Length': size,
-    }
-    params = {
-        'uploadType': 'resumable',
-        'name': filename,
-    }
-    r = requests.post(url, headers=headers, params=params)
-    r.raise_for_status()
-    location = r.headers.get('Location')
-    with open(archive, 'rb') as fp:
-        headers = {
-            'Content-Length': size,
-            'Content-Type': 'application/zip',
-        }
-        r = requests.put(location, headers=headers, data=fp)
-    r.raise_for_status()
-    return config.storage_url + config.bucket + filename
 
 
 def notify(package):
