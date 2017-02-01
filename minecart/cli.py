@@ -1,11 +1,9 @@
-import json
-import os
 import signal
 
 import click
 import stomp
 
-from minecart.packager import create_archive, upload, docset, notify
+from minecart.packager import ApiListener
 
 
 @click.group()
@@ -31,21 +29,3 @@ def run(broker_host, broker_port, api_host, api_port, repo_host, repo_port,
 
     while True:
         signal.pause()
-
-
-class ApiListener(stomp.ConnectionListener):
-    def on_message(self, headers, message):
-        handle_message(message)
-
-
-def handle_message(message):
-    msg = json.loads(message)
-    docs = docset(msg['docset'])
-    arxv = create_archive(docs)
-    try:
-        package = upload(arxv)
-    except Exception:
-        raise
-    finally:
-        os.remove(arxv)
-    notify(package)
