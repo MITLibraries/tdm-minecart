@@ -1,34 +1,45 @@
-import os.path
-import tempfile
-import uuid
+from collections import namedtuple
 
+import rdflib
 import requests
 
 
-def docset(docset_id):
-    r = requests.get(config.api + '/docsets/' + docset_id + '/catalog')
+PCDMFile = namedtuple('PCDMFile', ['uri', 'mimetype'])
+PCDM = rdflib.namespace.Namespace('http://pcdm.org/models#')
+EBU = rdflib.namespace.Namespace(
+        'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#')
+
+
+def document_set(url, session=None, fedora=None):
+    session = session or requests.Session()
+    r = session.get(url)
     r.raise_for_status()
-    return r.jsoin().get('docs')
+    for m in r.json().get('members'):
+        doc = get_item_meta(fedora + m['ref'], session=session)
+        yield Document(doc)
 
 
-def create_archive(docs):
-    """Create a zip archive of a docset.
+class Document:
+    def __init__(self, graph):
+        self.g = rdflib.Graph()
+        self.g.parse(data=graph, format='n3')
 
-    Note that each document is read into memory before being written. If you
-    are writing large files this could be a problem.
-    """
-    tmp = tempfile.gettempdir()
-    archive_name = os.path.join(tmp, uuid.uuid4()) + '.zip'
-    with archive(archive_name) as arxv:
-        for doc in docs:
-            r = requests.get(doc, stream=True)
-            with tempfile.NamedTemporaryFile() as f:
-                for chunk in r.iter_content(chunk_size=1024):
-                    f.write(chunk)
-                arxv.write(f.name, doc.name)
-    return archive_name
+    @property
+    def files(self):
+        for o in self.g.objects(subject=None, predicate=PCDM.hasFile):
+            mimetype = self.g.value(subject=o, predicate=EBU.hasMimeType,
+                                    object=None, any=False)
+            yield PCDMFile(uri=str(o), mimetype=str(mimetype))
 
 
-def notify(package):
-    r = requests.post(config.api + '/notify/' + package)
+def get_item_meta(url, session=None):
+    session = session or requests.Session()
+    headers = {
+        'Accept': 'text/n3',
+        'Prefer': 'return=representation; '
+                  'include="http://fedora.info/definitions/v4/repository'
+                  '#EmbedResources"',
+    }
+    r = session.get(url, headers=headers)
     r.raise_for_status()
+    return r.text

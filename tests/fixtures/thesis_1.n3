@@ -1,0 +1,23 @@
+@prefix bibo: <http://purl.org/ontology/bibo/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix mods: <http://www.loc.gov/standards/mods/modsrdf/v1/#> .
+@prefix msl: <http://purl.org/montana-state/library/> .
+@prefix pcdm: <http://pcdm.org/models#> .
+@prefix rda: <http://www.rdaregistry.info/Elements/u/#> .
+@prefix ebu: <http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#> .
+<mock://example.com/1> dcterms:title "Title 1", "Title 2" ;
+                       dcterms:abstract "This is an abstract" ;
+                       rda:60420 "Baz, Foo" ;
+                       dcterms:creator "Foo", "Bar" ;
+                       dcterms:dateCopyrighted "2001" ;
+                       dcterms:issued "2002" ;
+                       msl:degreeGrantedForCompletion "Engineering" ;
+                       msl:associatedDepartment "Comp Sci" ;
+                       bibo:handle <http://handle.org/1> ;
+                       mods:note "This is a thesis" ;
+                       pcdm:hasFile <mock://example.com/bar> ,
+                                    <mock://example.com/baz> .
+<mock://example.com/bar> a pcdm:File ;
+                         ebu:hasMimeType "text/plain" .
+<mock://example.com/baz> a pcdm:File ;
+                         ebu:hasMimeType "application/pdf" .

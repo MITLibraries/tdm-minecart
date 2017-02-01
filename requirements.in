@@ -1,5 +1,6 @@
 click
 stomp.py
+rdflib
 requests
 pyjwt
 cryptography
