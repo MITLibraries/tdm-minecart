@@ -1,7 +1,6 @@
 import os.path
 import tempfile
 import uuid
-import zipfile
 
 import requests
 
@@ -20,10 +19,13 @@ def create_archive(docs):
     """
     tmp = tempfile.gettempdir()
     archive_name = os.path.join(tmp, uuid.uuid4()) + '.zip'
-    with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+    with archive(archive_name) as arxv:
         for doc in docs:
-            r = requests.get(doc)
-            zf.writestr(doc, r.content)
+            r = requests.get(doc, stream=True)
+            with tempfile.NamedTemporaryFile() as f:
+                for chunk in r.iter_content(chunk_size=1024):
+                    f.write(chunk)
+                arxv.write(f.name, doc.name)
     return archive_name
 
 
