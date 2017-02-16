@@ -1,3 +1,4 @@
+import os
 import tempfile
 import zipfile
 
@@ -29,3 +30,11 @@ def test_archive_returns_writeable_archive(thesis):
             arx.write(thesis, 'test.txt')
         with zipfile.ZipFile(fp) as zf:
             assert 'test.txt' in zf.namelist()
+
+
+def test_archive_deletes_archive_on_error():
+    fp = tempfile.NamedTemporaryFile()
+    with pytest.raises(Exception):
+        with archive(fp.name):
+            raise Exception
+    assert not os.path.isfile(fp.name)
