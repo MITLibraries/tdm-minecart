@@ -1,5 +1,4 @@
 from collections import namedtuple
-import json
 import logging
 import os.path
 import tempfile
@@ -72,30 +71,31 @@ def create_package(url, session=None, fedora=None):
 
 
 class ApiListener(stomp.ConnectionListener):
-    def __init__(self, fedora_url, bucket, session):
-        self.ctx = {
-            'fedora': fedora_url,
-            'bucket': bucket,
-            'http': session,
-        }
+    def __init__(self, fedora, bucket, conn):
+        self.fedora = fedora
+        self.bucket = bucket
+        self.conn = conn
 
     def on_message(self, headers, message):
-        handle_message(message, self.ctx)
-
-
-def handle_message(message, ctx):
-    logger = logging.getLogger(__name__)
-    bucket = ctx['bucket']
-    session = ctx['http']
-    msg = json.loads(message)
-    try:
-        arxv = create_package(msg['docset'], session=session,
-                              fedora=ctx['fedora'])
-        blob = bucket.create(os.path.basename(arxv))
-        blob.upload(arxv)
-        # notify_api(blob.url)
-    except Exception:
-        logger.error("Could not create package for docset: {}".
-                     format(msg['docset']))
-    finally:
-        os.remove(arxv)
+        logger = logging.getLogger(__name__)
+        docset = message.strip()
+        docset_id = docset.split('/')[-1].split('?')[0]
+        queue = '/queue/package/' + docset_id
+        self.conn.send(queue, 'Accepted.')
+        try:
+            arxv = create_package(docset, fedora=self.fedora)
+        except Exception as e:
+            logger.error('Error creating package for docset {}: {}'
+                         .format(docset, e))
+            return
+        try:
+            size = os.stat(arxv).st_size
+            blob = self.bucket.create(os.path.basename(arxv))
+            blob.upload(arxv)
+            self.conn.send(queue,
+                           'Complete: {}\nSize: {}'.format(blob.url, size))
+        except Exception as e:
+            logger.error('Error uploading package for docset {}: {}'
+                         .format(docset, e))
+        finally:
+            os.remove(arxv)

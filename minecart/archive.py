@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import os
 import zipfile
 
 
@@ -7,6 +8,10 @@ def archive(filename):
     try:
         arx = Zip(filename)
         yield arx
+    except:
+        if os.path.isfile(filename):
+            os.remove(filename)
+        raise
     finally:
         arx.close()
 
